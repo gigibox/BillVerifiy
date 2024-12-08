@@ -22,10 +22,12 @@ function createWindow() {
   Menu.setApplicationMenu(null);
   // Create the browser window.
   win = new BrowserWindow({
-    // width: 1320,
-    // height: 720,
+    width: 1320,
+    height: 720,
     minWidth: 1300,
     minHeight: 720,
+    backgroundColor: '#FFFFFF',
+    // transparent: true,
     resizable: true,
     webPreferences: {
       // Use pluginOptions.nodeIntegration, leave this alone

@@ -104,7 +104,7 @@
             :row-class-name="personTableRowClassName"
           >
             <pl-table-column type="index" label="#"></pl-table-column>
-            <pl-table-column prop="hzOrder" label="华住订单号" sortable></pl-table-column>
+            <pl-table-column prop="hzOrder" label="华住订单号"></pl-table-column>
             <pl-table-column prop="hzSerial" label="华住交易单号"></pl-table-column>
             <pl-table-column prop="chOrder" label="渠道订单号"></pl-table-column>
             <pl-table-column prop="hotelId" label="酒店ID" width="110px"></pl-table-column>
@@ -113,6 +113,7 @@
             <pl-table-column prop="amount" label="交易金额" width="80px"></pl-table-column>
             <pl-table-column prop="paymentDate" label="交易时间" width="160px"></pl-table-column>
             <pl-table-column prop="paymentType" label="支付方式" width="110px"></pl-table-column>
+            <pl-table-column prop="founded" label="匹配次数" width="100px" sortable></pl-table-column>
           </pl-table>
           <span class="total">共导入 {{ pbsTable.length }} 条数据, 总金额 {{ pbsTable | amount }}</span>
         </div>
@@ -320,6 +321,7 @@ export default {
             let billTypeMap = new Map()
             let trnTypeMap = new Map()
 
+            let prevTrnGroupVal, prevTrnSubVal, prevTrnCodeVal, prevTrnDescVal = ""
             for (let item in sheetArray) {
               let bill = {
                 id: item,
@@ -352,20 +354,42 @@ export default {
                 bill.filter1 = sheetArray[item]["External Ref. No. 外部单号"] + "_" + sheetArray[item]["Trn.Type 账目类型"].trim();
               }
 
+              if (bill.trnType != "") {
+                trnTypeMap.set(bill.trnType, bill.trnType)
+              } else {
+                console.log("skip", sheetArray[item])
+
+                continue
+              }
+
               if (bill.trnGroup != "") {
                 trnGroupMap.set(bill.trnGroup, bill.trnGroup)
+                prevTrnGroupVal = bill.trnGroup
+              } else {
+                bill.trnGroup = prevTrnGroupVal
               }
 
               if (bill.trnSub != "") {
                 trnSubMap.set(bill.trnSub, bill.trnSub)
+                prevTrnSubVal = bill.trnSub
+              } else {
+                bill.trnSub = prevTrnSubVal
+              }
+
+              if (bill.trnCode != "") {
+                prevTrnCodeVal = bill.trnCode
+              } else {
+                bill.trnCode = prevTrnCodeVal
+              }
+
+              if (bill.trnDesc != "") {
+                prevTrnDescVal = bill.trnDesc
+              } else {
+                bill.trnDesc = prevTrnDescVal
               }
 
               if (bill.billType != "") {
                 billTypeMap.set(bill.billType, bill.billType)
-              }
-
-              if (bill.trnType != "") {
-                trnTypeMap.set(bill.trnType, bill.trnType)
               }
 
               successCount++
@@ -428,18 +452,19 @@ export default {
                 amount: parseFloat(sheetArray[item]["交易金额"]),
                 paymentDate: sheetArray[item]["交易时间"],
                 paymentType: sheetArray[item]["支付方式"],
+                founded: 0
               }
 
               if (sheetArray[item]["华住订单号"] != undefined) {
                 bill.filter1 = (sheetArray[item]["华住订单号"] + "_" + ((parseFloat(sheetArray[item]["交易金额"]) > 0) ? "入账" : "退款")).trim();
-                _this.pbsFilter1Map[bill.filter1] = true
+                _this.pbsFilter1Map[bill.filter1] = item
               } else {
                 // console.log(sheetArray[item])
               }
 
               if (sheetArray[item]["华住交易单号"] != undefined) {
                 bill.filter2 = (sheetArray[item]["华住交易单号"] + "_" + ((parseFloat(sheetArray[item]["交易金额"]) > 0) ? "入账" : "退款")).trim();
-                _this.pbsFilter2Map[bill.filter2] = true
+                _this.pbsFilter2Map[bill.filter2] = item
               } else {
                 // console.log(sheetArray[item])
               }
@@ -467,12 +492,32 @@ export default {
         return
       }
       this.pmsTable.forEach(element => {
-        if (!this.pbsFilter1Map[element.filter1] && !this.pbsFilter2Map[element.filter2]) {
-          this.verifyTable.push(element)
+        if (this.pbsFilter1Map[element.filter1]) {
+          this.setPbsVerify(this.pbsFilter1Map[element.filter1])
+          return
         }
+
+        if (this.pbsFilter2Map[element.filter2]) {
+          this.setPbsVerify(this.pbsFilter2Map[element.filter2])
+          return
+        }
+
+        this.verifyTable.push(element)
       });
 
       this.CBtnLoading = false;
+    },
+    setPbsVerify(id) {
+      for (let i = 0; i < this.pbsTable.length; i++) {
+        if (this.pbsTable[i].id == id) {
+          // this.$set(this.pbsTable[i], "founded", this.pbsTable[i]["founded"] += 1)
+          // this.pbsTable[i] = { ...this.pbsTable[i], "founded": this.pbsTable[i]["founded"] + 1 };
+          this.pbsTable.splice(i, 1, { ...this.pbsTable[i], "founded": this.pbsTable[i]["founded"] + 1 });
+          console.log("founded", this.pbsTable[i])
+
+          break;
+        }
+      }
     },
     handleCleanPms() {
       this.pmsTable = []
